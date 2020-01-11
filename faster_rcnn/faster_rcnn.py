@@ -19,6 +19,12 @@ from network import Conv2d, FC
 from roi_pooling.modules.roi_pool import RoIPool
 from vgg16 import VGG16
 
+'''
+关键词：
+1. anchor 候选窗口
+
+'''
+
 
 def nms_detections(pred_boxes, scores, nms_thresh, inds=None):
     dets = np.hstack((pred_boxes,
@@ -35,9 +41,11 @@ class RPN(nn.Module):
 
     def __init__(self):
         super(RPN, self).__init__()
-
+        # 获取特征
         self.features = VGG16(bn=False)
+        # 一层卷积
         self.conv1 = Conv2d(512, 512, 3, same_padding=True)
+
         self.score_conv = Conv2d(512, len(self.anchor_scales) * 3 * 2, 1, relu=False, same_padding=False)
         self.bbox_conv = Conv2d(512, len(self.anchor_scales) * 3 * 4, 1, relu=False, same_padding=False)
 
@@ -54,12 +62,16 @@ class RPN(nn.Module):
         im_data = im_data.permute(0, 3, 1, 2)
         features = self.features(im_data)
 
+        # 区域生成网络
         rpn_conv1 = self.conv1(features)
 
-        # rpn score
+        # rpn score 的分
         rpn_cls_score = self.score_conv(rpn_conv1)
+        # 分类得分的形状
         rpn_cls_score_reshape = self.reshape_layer(rpn_cls_score, 2)
+        # 通过得分获得经过softmax运算获取概率
         rpn_cls_prob = F.softmax(rpn_cls_score_reshape)
+        # 转换形状
         rpn_cls_prob_reshape = self.reshape_layer(rpn_cls_prob, len(self.anchor_scales)*3*2)
 
         # rpn boxes
@@ -104,8 +116,9 @@ class RPN(nn.Module):
     @staticmethod
     def reshape_layer(x, d):
         input_shape = x.size()
+        # 获取输入形状
         # x = x.permute(0, 3, 1, 2)
-        # b c w h
+        # b c w h batch 通道 宽高
         x = x.view(
             input_shape[0],
             int(d),
