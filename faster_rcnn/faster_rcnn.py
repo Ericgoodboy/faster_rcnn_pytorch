@@ -22,7 +22,8 @@ from vgg16 import VGG16
 '''
 关键词：
 1. anchor 候选窗口
-
+2. IoU 交并比
+3. GT （ground truth） 正确的标注
 '''
 
 
@@ -45,8 +46,9 @@ class RPN(nn.Module):
         self.features = VGG16(bn=False)
         # 一层卷积
         self.conv1 = Conv2d(512, 512, 3, same_padding=True)
-
+        #卷积层得分 每个像素值以锚点为心，九种大小的得分
         self.score_conv = Conv2d(512, len(self.anchor_scales) * 3 * 2, 1, relu=False, same_padding=False)
+
         self.bbox_conv = Conv2d(512, len(self.anchor_scales) * 3 * 4, 1, relu=False, same_padding=False)
 
         # loss
@@ -125,6 +127,7 @@ class RPN(nn.Module):
             int(float(input_shape[1] * input_shape[2]) / float(d)),
             input_shape[3]
         )
+        # C:\Users\77696\AppData\Local\Programs\Python\Python37
         # x = x.permute(0, 2, 3, 1)
         return x
 
@@ -226,7 +229,7 @@ class FasterRCNN(nn.Module):
 
     def forward(self, im_data, im_info, gt_boxes=None, gt_ishard=None, dontcare_areas=None):
         features, rois = self.rpn(im_data, im_info, gt_boxes, gt_ishard, dontcare_areas)
-
+        # roi 感兴趣区域
         if self.training:
             roi_data = self.proposal_target_layer(rois, gt_boxes, gt_ishard, dontcare_areas, self.n_classes)
             rois = roi_data[0]
